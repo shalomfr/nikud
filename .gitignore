@@ -51,14 +51,10 @@ logs/
 .DS_Store
 Thumbs.db
 
-# Project specific
-nikud_database.db
+# Project specific - data files
 *.xlsx
-!רשימה לסינון.xlsx
-!מילים מתהילים.xlsx
 
 # Temporary files
 tmp/
 temp/
 *.tmp
-
