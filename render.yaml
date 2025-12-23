@@ -1,0 +1,47 @@
+# Render Blueprint Configuration
+# מערכת ניתוח ניקוד - הגדרות פריסה
+
+services:
+  # Web Service
+  - type: web
+    name: nikud-analyzer
+    runtime: docker
+    
+    # Repository settings (will be set via Render dashboard)
+    # repo: https://github.com/YOUR_USERNAME/nikud
+    # branch: main
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Scaling
+    plan: free
+    numInstances: 1
+    
+    # Environment variables
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nikud-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "false"
+      - key: USE_SQLITE
+        value: "false"
+    
+    # Docker settings
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+
+# Database
+databases:
+  - name: nikud-db
+    plan: free
+    databaseName: nikud_database
+    user: nikud_user
+    
+    # PostgreSQL version
+    # ipAllowList: [] # Allow all IPs for free tier
+

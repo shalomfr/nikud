@@ -1,0 +1,396 @@
+{% extends "base.html" %}
+
+{% block title %}{{ app_name }} - חיפוש מילים{% endblock %}
+
+{% block content %}
+<div x-data="searchApp()" x-init="init()">
+    <!-- Header with Stats -->
+    <div class="mb-8 fade-in">
+        <h1 class="text-3xl font-bold text-slate-800 mb-2">חיפוש מילים</h1>
+        <p class="text-slate-500">חפש וסנן מילים לפי כללי ניקוד מורכבים</p>
+        
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6">
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100 card-hover">
+                <div class="text-3xl font-bold text-sky-600">{{ stats.total_words | default(0) }}</div>
+                <div class="text-slate-500 text-sm">סך הכל מילים</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100 card-hover">
+                <div class="text-3xl font-bold text-teal-600">{{ stats.unique_words | default(0) }}</div>
+                <div class="text-slate-500 text-sm">מילים ייחודיות</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100 card-hover">
+                <div class="text-3xl font-bold text-amber-500">{{ stats.words_with_shva | default(0) }}</div>
+                <div class="text-slate-500 text-sm">מילים עם שווא</div>
+            </div>
+            <div class="bg-white rounded-xl p-4 shadow-sm border border-slate-100 card-hover">
+                <div class="text-3xl font-bold text-slate-600">{{ stats.total_sources | default(0) }}</div>
+                <div class="text-slate-500 text-sm">מקורות</div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Search Form -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-8 slide-in">
+        <h2 class="text-lg font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <svg class="w-5 h-5 text-sky-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+            </svg>
+            סינון וחיפוש
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Word Search -->
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">מילה עם ניקוד</label>
+                <input type="text" x-model="filters.word" 
+                       class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 outline-none transition-all hebrew-text"
+                       placeholder="לדוגמה: בְּרֵאשִׁית">
+            </div>
+            
+            <!-- Plain Word Search -->
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">מילה ללא ניקוד</label>
+                <input type="text" x-model="filters.word_plain" 
+                       class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 outline-none transition-all hebrew-text"
+                       placeholder="לדוגמה: בראשית">
+            </div>
+            
+            <!-- Syllable Type -->
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">סוג הברה</label>
+                <select x-model="filters.syllable_type" 
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 outline-none transition-all bg-white">
+                    <option value="">הכל</option>
+                    <option value="פתוחה">פתוחה</option>
+                    <option value="סגורה">סגורה</option>
+                    <option value="לא ידוע">לא ידוע</option>
+                </select>
+            </div>
+            
+            <!-- Source -->
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">מקור</label>
+                <select x-model="filters.source_id" 
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 outline-none transition-all bg-white">
+                    <option value="">הכל</option>
+                    {% for source in sources %}
+                    <option value="{{ source.id }}">{{ source.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <!-- Additional Filters -->
+        <div class="mt-4 flex flex-wrap gap-4">
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" x-model="filters.has_shva" 
+                       class="w-5 h-5 rounded border-slate-300 text-sky-500 focus:ring-sky-500/20">
+                <span class="text-slate-600 group-hover:text-slate-800 transition-colors">יש שווא</span>
+            </label>
+            
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" x-model="filters.has_dagesh" 
+                       class="w-5 h-5 rounded border-slate-300 text-sky-500 focus:ring-sky-500/20">
+                <span class="text-slate-600 group-hover:text-slate-800 transition-colors">יש דגש</span>
+            </label>
+            
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" x-model="filters.has_open_syllable" 
+                       class="w-5 h-5 rounded border-slate-300 text-sky-500 focus:ring-sky-500/20">
+                <span class="text-slate-600 group-hover:text-slate-800 transition-colors">הברה פתוחה</span>
+            </label>
+            
+            <label class="flex items-center gap-2 cursor-pointer group">
+                <input type="checkbox" x-model="filters.has_closed_syllable" 
+                       class="w-5 h-5 rounded border-slate-300 text-sky-500 focus:ring-sky-500/20">
+                <span class="text-slate-600 group-hover:text-slate-800 transition-colors">הברה סגורה</span>
+            </label>
+        </div>
+        
+        <!-- Action Buttons -->
+        <div class="mt-6 flex flex-wrap gap-3">
+            <button @click="search()" 
+                    class="btn-primary px-6 py-2.5 bg-gradient-to-r from-sky-500 to-sky-600 hover:from-sky-600 hover:to-sky-700 text-white rounded-xl font-medium shadow-lg shadow-sky-500/25 hover:shadow-sky-500/40 transition-all flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                </svg>
+                חפש
+            </button>
+            
+            <button @click="clearFilters()" 
+                    class="px-6 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-all flex items-center gap-2">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+                נקה
+            </button>
+            
+            <button @click="exportResults()" 
+                    :disabled="results.length === 0"
+                    class="px-6 py-2.5 bg-teal-500 hover:bg-teal-600 disabled:bg-slate-200 disabled:text-slate-400 text-white rounded-xl font-medium transition-all flex items-center gap-2 mr-auto">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                </svg>
+                ייצא לאקסל
+            </button>
+        </div>
+    </div>
+    
+    <!-- Results -->
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
+        <!-- Results Header -->
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <h2 class="text-lg font-semibold text-slate-700">תוצאות</h2>
+                <span x-show="total > 0" class="px-2.5 py-0.5 bg-sky-100 text-sky-700 rounded-full text-sm font-medium" x-text="total + ' נמצאו'"></span>
+            </div>
+            
+            <!-- Pagination Info -->
+            <div x-show="total > 0" class="text-slate-500 text-sm">
+                עמוד <span x-text="page"></span> מתוך <span x-text="pages"></span>
+            </div>
+        </div>
+        
+        <!-- Loading State -->
+        <div x-show="loading" class="p-12 text-center">
+            <div class="inline-block w-8 h-8 border-4 border-sky-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="mt-4 text-slate-500">טוען תוצאות...</p>
+        </div>
+        
+        <!-- Empty State -->
+        <div x-show="!loading && results.length === 0" class="p-12 text-center">
+            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium text-slate-700">לא נמצאו תוצאות</h3>
+            <p class="text-slate-500 mt-1">נסה לשנות את פרמטרי החיפוש</p>
+        </div>
+        
+        <!-- Results Table -->
+        <div x-show="!loading && results.length > 0" class="overflow-x-auto">
+            <table class="w-full">
+                <thead class="bg-slate-50">
+                    <tr>
+                        <th class="px-6 py-3 text-right text-sm font-semibold text-slate-600">מילה</th>
+                        <th class="px-6 py-3 text-right text-sm font-semibold text-slate-600">ללא ניקוד</th>
+                        <th class="px-6 py-3 text-right text-sm font-semibold text-slate-600">סוג הברה</th>
+                        <th class="px-6 py-3 text-right text-sm font-semibold text-slate-600">שווא</th>
+                        <th class="px-6 py-3 text-right text-sm font-semibold text-slate-600">דגש</th>
+                        <th class="px-6 py-3 text-right text-sm font-semibold text-slate-600">מקרים מיוחדים</th>
+                        <th class="px-6 py-3 text-right text-sm font-semibold text-slate-600">מקור</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <template x-for="result in results" :key="result.id">
+                        <tr class="table-row-hover cursor-pointer" @click="showDetails(result)">
+                            <td class="px-6 py-4 hebrew-text text-lg font-medium text-slate-800" x-text="result.word"></td>
+                            <td class="px-6 py-4 hebrew-text text-slate-600" x-text="result.word_plain"></td>
+                            <td class="px-6 py-4">
+                                <span class="px-2.5 py-1 rounded-lg text-xs font-medium"
+                                      :class="{
+                                          'bg-teal-100 text-teal-700': result.syllable_type === 'פתוחה',
+                                          'bg-amber-100 text-amber-700': result.syllable_type === 'סגורה',
+                                          'bg-slate-100 text-slate-600': result.syllable_type === 'לא ידוע'
+                                      }"
+                                      x-text="result.syllable_type"></span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span x-show="result.has_shva" class="text-sky-600 font-medium" x-text="result.shva_types?.join(', ') || 'כן'"></span>
+                                <span x-show="!result.has_shva" class="text-slate-400">—</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span x-show="result.has_dagesh" class="inline-flex items-center justify-center w-6 h-6 bg-sky-100 text-sky-600 rounded-full">✓</span>
+                                <span x-show="!result.has_dagesh" class="text-slate-400">—</span>
+                            </td>
+                            <td class="px-6 py-4 text-sm text-slate-600" x-text="result.special_cases?.join(', ') || '—'"></td>
+                            <td class="px-6 py-4 text-sm text-slate-500" x-text="result.source_name || '—'"></td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Pagination -->
+        <div x-show="pages > 1" class="px-6 py-4 border-t border-slate-100 flex items-center justify-center gap-2">
+            <button @click="page > 1 && (page--, search())" 
+                    :disabled="page <= 1"
+                    class="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                הקודם
+            </button>
+            
+            <template x-for="p in Math.min(pages, 5)" :key="p">
+                <button @click="page = p; search()" 
+                        :class="page === p ? 'bg-sky-500 text-white' : 'bg-slate-100 hover:bg-slate-200'"
+                        class="w-10 h-10 rounded-lg font-medium transition-all"
+                        x-text="p"></button>
+            </template>
+            
+            <button @click="page < pages && (page++, search())" 
+                    :disabled="page >= pages"
+                    class="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+                הבא
+            </button>
+        </div>
+    </div>
+    
+    <!-- Word Details Modal -->
+    <div x-show="selectedWord" 
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-200"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0"
+         class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+         @click.self="selectedWord = null">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-xl font-bold text-slate-800">פרטי המילה</h3>
+                    <button @click="selectedWord = null" class="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                        <svg class="w-5 h-5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div x-show="selectedWord" class="space-y-4">
+                    <div class="text-center pb-4 border-b border-slate-100">
+                        <div class="text-4xl hebrew-text font-bold text-slate-800" x-text="selectedWord?.word"></div>
+                        <div class="text-lg text-slate-500 mt-1" x-text="selectedWord?.word_plain"></div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-50 rounded-xl p-4">
+                            <div class="text-sm text-slate-500">סוג הברה</div>
+                            <div class="font-semibold text-slate-800" x-text="selectedWord?.syllable_type"></div>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-4">
+                            <div class="text-sm text-slate-500">תבנית ניקוד</div>
+                            <div class="font-semibold text-slate-800 font-mono" x-text="selectedWord?.nikud_pattern"></div>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-4">
+                            <div class="text-sm text-slate-500">שווא</div>
+                            <div class="font-semibold text-slate-800" x-text="selectedWord?.has_shva ? (selectedWord?.shva_types?.join(', ') || 'כן') : 'אין'"></div>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl p-4">
+                            <div class="text-sm text-slate-500">דגש</div>
+                            <div class="font-semibold text-slate-800" x-text="selectedWord?.has_dagesh ? 'כן' : 'לא'"></div>
+                        </div>
+                    </div>
+                    
+                    <div x-show="selectedWord?.special_cases?.length > 0" class="bg-amber-50 rounded-xl p-4">
+                        <div class="text-sm text-amber-600 font-medium mb-1">מקרים מיוחדים</div>
+                        <div class="text-amber-800" x-text="selectedWord?.special_cases?.join(', ')"></div>
+                    </div>
+                    
+                    <div x-show="selectedWord?.context" class="bg-sky-50 rounded-xl p-4">
+                        <div class="text-sm text-sky-600 font-medium mb-1">הקשר</div>
+                        <div class="text-sky-800 hebrew-text" x-text="selectedWord?.context"></div>
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-4 border-t border-slate-100 text-sm text-slate-500">
+                        <span x-text="'מקור: ' + (selectedWord?.source_name || 'לא ידוע')"></span>
+                        <span x-text="selectedWord?.category_name ? 'קטגוריה: ' + selectedWord?.category_name : ''"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function searchApp() {
+    return {
+        filters: {
+            word: '',
+            word_plain: '',
+            syllable_type: '',
+            source_id: '',
+            has_shva: false,
+            has_dagesh: false,
+            has_open_syllable: false,
+            has_closed_syllable: false
+        },
+        results: [],
+        total: 0,
+        page: 1,
+        pages: 1,
+        perPage: 50,
+        loading: false,
+        selectedWord: null,
+        
+        init() {
+            this.search();
+        },
+        
+        async search() {
+            this.loading = true;
+            
+            try {
+                const params = new URLSearchParams();
+                params.append('page', this.page);
+                params.append('per_page', this.perPage);
+                
+                if (this.filters.word) params.append('word', this.filters.word);
+                if (this.filters.word_plain) params.append('word_plain', this.filters.word_plain);
+                if (this.filters.syllable_type) params.append('syllable_type', this.filters.syllable_type);
+                if (this.filters.source_id) params.append('source_id', this.filters.source_id);
+                if (this.filters.has_shva) params.append('has_shva', 'true');
+                if (this.filters.has_dagesh) params.append('has_dagesh', 'true');
+                if (this.filters.has_open_syllable) params.append('has_open_syllable', 'true');
+                if (this.filters.has_closed_syllable) params.append('has_closed_syllable', 'true');
+                
+                const response = await fetch(`/api/words/search?${params}`);
+                const data = await response.json();
+                
+                this.results = data.results;
+                this.total = data.total;
+                this.pages = data.pages;
+            } catch (error) {
+                console.error('Search error:', error);
+            } finally {
+                this.loading = false;
+            }
+        },
+        
+        clearFilters() {
+            this.filters = {
+                word: '',
+                word_plain: '',
+                syllable_type: '',
+                source_id: '',
+                has_shva: false,
+                has_dagesh: false,
+                has_open_syllable: false,
+                has_closed_syllable: false
+            };
+            this.page = 1;
+            this.search();
+        },
+        
+        showDetails(word) {
+            this.selectedWord = word;
+        },
+        
+        exportResults() {
+            const params = new URLSearchParams();
+            if (this.filters.word) params.append('word', this.filters.word);
+            if (this.filters.word_plain) params.append('word_plain', this.filters.word_plain);
+            if (this.filters.syllable_type) params.append('syllable_type', this.filters.syllable_type);
+            if (this.filters.source_id) params.append('source_id', this.filters.source_id);
+            if (this.filters.has_shva) params.append('has_shva', 'true');
+            if (this.filters.has_dagesh) params.append('has_dagesh', 'true');
+            
+            window.location.href = `/api/words/export?${params}`;
+        }
+    }
+}
+</script>
+{% endblock %}
+
