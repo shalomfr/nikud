@@ -20,7 +20,7 @@ class ExcelExporter:
         self.header_font = Font(bold=True, size=11)
         self.header_fill = PatternFill(start_color="0EA5E9", end_color="0EA5E9", fill_type="solid")
         self.header_alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
-        self.rtl_alignment = Alignment(horizontal="right", vertical="center", reading_order=2)
+        self.rtl_alignment = Alignment(horizontal="right", vertical="center", readingOrder=2)
         self.thin_border = Border(
             left=Side(style='thin'),
             right=Side(style='thin'),
